@@ -35,10 +35,33 @@ export async function updateSession(request: NextRequest) {
     });
 
     // Refresh session so it doesn't expire while user is active
-    await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
+    const pathname = request.nextUrl.pathname;
+    const isProtected = pathname.startsWith("/reports") || pathname.startsWith("/dashboard") || pathname.startsWith("/products");
+    if (isProtected && !user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.search = "";
+      loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+      return copyCookies(response, NextResponse.redirect(loginUrl));
+    }
+    if (user && (pathname.startsWith("/dashboard") || pathname.startsWith("/products"))) {
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      if (profile?.role !== "operator") {
+        const reportsUrl = request.nextUrl.clone();
+        reportsUrl.pathname = "/reports";
+        reportsUrl.search = "?notice=operator-only";
+        return copyCookies(response, NextResponse.redirect(reportsUrl));
+      }
+    }
     return response;
   } catch {
     // Never let an auth hiccup crash the entire edge middleware
     return supabaseResponse;
   }
+}
+
+function copyCookies(source: NextResponse, destination: NextResponse) {
+  for (const cookie of source.cookies.getAll()) destination.cookies.set(cookie);
+  return destination;
 }

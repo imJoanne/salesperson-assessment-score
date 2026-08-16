@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { AssessmentResponse, DashboardMetrics, LeadType, Product, Purchase, Question, SelectedAnswer } from "@/lib/types";
+import type { AssessmentResponse, DashboardMetrics, LeadType, Product, Purchase, Question, SelectedAnswer, UserProfile } from "@/lib/types";
 
 function fail(message: string, error?: { message?: string } | null): never {
   throw new Error(error?.message ? `${message}: ${error.message}` : message);
@@ -20,7 +20,11 @@ export async function getQuestions(): Promise<Question[]> {
 }
 
 export async function createAssessmentResponse(input: { answers: SelectedAnswer[]; totalScore: number; leadType: string; gapFlags: string[] }): Promise<AssessmentResponse> {
-  const { data, error } = await createClient().from("assessment_responses").insert({
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) fail("Sign in before submitting your assessment");
+  const { data, error } = await supabase.from("assessment_responses").insert({
+    user_id: user.id,
     answers: input.answers,
     total_score: input.totalScore,
     lead_type: input.leadType,
@@ -35,6 +39,15 @@ export async function getAssessmentResponse(id: string): Promise<AssessmentRespo
   const { data, error } = await createClient().from("assessment_responses").select("id,answers,total_score,lead_type,gap_flags,created_at").eq("id", id).maybeSingle();
   if (error) fail("Could not load this report", error);
   return data ? ({ ...data, total_score: Number(data.total_score) } as AssessmentResponse) : null;
+}
+
+export async function getCurrentProfile(): Promise<UserProfile | null> {
+  const supabase = createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return null;
+  const { data, error } = await supabase.from("profiles").select("id,email,full_name,company,phone,role").eq("id", user.id).maybeSingle();
+  if (error) fail("Could not load your account", error);
+  return data as UserProfile | null;
 }
 
 export async function getActiveProducts(): Promise<Product[]> {
@@ -77,13 +90,19 @@ export async function setProductActive(id: string, isActive: boolean): Promise<P
 }
 
 export async function createPurchase(responseId: string, product: Product): Promise<Purchase> {
-  const { data, error } = await createClient().from("purchases").insert({ assessment_response_id: responseId, product_id: product.id, amount_cents: product.price_cents }).select("id,assessment_response_id,product_id,amount_cents,created_at").single();
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) fail("Sign in before selecting a program");
+  const { data, error } = await supabase.from("purchases").insert({ user_id: user.id, assessment_response_id: responseId, product_id: product.id, amount_cents: product.price_cents }).select("id,assessment_response_id,product_id,amount_cents,created_at").single();
   if (error || !data) fail("Could not record this purchase", error);
   return data as Purchase;
 }
 
 export async function createRating(responseId: string, score: number, referralEmail?: string) {
-  const { data, error } = await createClient().from("ratings").insert({ assessment_response_id: responseId, score, referral_email: referralEmail || null }).select("id").single();
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) fail("Sign in before sharing feedback");
+  const { data, error } = await supabase.from("ratings").insert({ user_id: user.id, assessment_response_id: responseId, score, referral_email: referralEmail || null }).select("id").single();
   if (error || !data) fail("Could not save your feedback", error);
   return data;
 }
@@ -91,7 +110,7 @@ export async function createRating(responseId: string, score: number, referralEm
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const supabase = createClient();
   const [responsesResult, purchasesResult, productsResult, ratingsResult] = await Promise.all([
-    supabase.from("assessment_responses").select("id,lead_type,total_score,gap_flags,created_at").order("created_at", { ascending: false }),
+    supabase.from("assessment_responses").select("id,lead_type,total_score,gap_flags,created_at,lead:profiles!assessment_responses_user_id_fkey(full_name,email,company,phone)").order("created_at", { ascending: false }),
     supabase.from("purchases").select("id,product_id,amount_cents,created_at"),
     supabase.from("products").select("id,name"),
     supabase.from("ratings").select("score"),
@@ -126,6 +145,10 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     averageRating: ratings.length ? ratingTotal / ratings.length : null,
     leadDistribution,
     purchasesByProduct,
-    recentReports: responses.slice(0, 5).map((response) => ({ ...response, total_score: Number(response.total_score) })) as DashboardMetrics["recentReports"],
+    recentReports: responses.slice(0, 5).map((response) => ({
+      ...response,
+      total_score: Number(response.total_score),
+      lead: Array.isArray(response.lead) ? (response.lead[0] ?? null) : response.lead,
+    })) as DashboardMetrics["recentReports"],
   };
 }

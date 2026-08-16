@@ -77,8 +77,13 @@
 - assessment_responses 1→N purchases
 - assessment_responses 1→1 ratings (optional)
 
-## RLS (v1 — permissive)
-All tables: open select/insert/update for demo. Lock-down sprint replaces with `auth.uid() = user_id` scoping. No FKs on user_id yet (demo rows exist without logged-in user).
+## profiles
+One row per Supabase Auth user with `full_name`, `email`, optional `company` and `phone`, and `role` (`visitor|operator`). An Auth trigger populates it from signup metadata.
+
+## RLS
+Questions, answer options, and products are publicly readable. Profiles, assessment responses, purchases, and ratings are owner-scoped with `auth.uid() = user_id`; operators can read all lead activity and manage catalog content. Legacy demo rows may retain a null `user_id` and are visible only to operators.
+
+`audit_logs` records purchase and rating creation through database triggers.
 
 ## AI Fields
 `assessment_responses.ai_narrative` stores AI-generated gap summary text with `ai_source`, `ai_confidence`, `ai_review_status` per convention. All nullable in v1 (rule-based path works without them).

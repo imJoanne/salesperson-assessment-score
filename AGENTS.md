@@ -33,9 +33,9 @@ build the wrong thing (e.g. a marketing landing page). Open the plan and build f
 5. **This is the real working app** — real forms, lists, detail views, and the end-to-end flow from
    the PRD's success scenario. Do **NOT** build a marketing/landing page, a front-end-only demo, or
    a connection-status dashboard.
-6. **Demo-first — no login wall in v1.** The homepage IS the working app (with seed data), reachable by
-   anyone — do NOT redirect to /login or gate the app behind auth yet. Login/signup + per-user lockdown
-   is a LATER "Lock it down" sprint, before real users/data. (Keeps the app demoable + screenshot-able.)
+6. **Authenticated lead capture.** The homepage remains public, but a visitor must create an account or
+   sign in before starting the assessment. Capture lead details at signup, owner-scope visitor records
+   with RLS, and gate operator screens by role.
 7. Never put secrets in frontend code.
 
 ## Deploy & data (binding — this stack is already provisioned)

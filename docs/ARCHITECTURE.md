@@ -4,17 +4,17 @@
 Next.js (App Router) + Supabase (Postgres/RLS) + Vercel.
 
 ## Build Now vs Later
-- **Now:** Assessment engine, scoring, gap report, purchase logging, operator dashboard, rating.
-- **Later:** Auth/login, per-user RLS, affiliate tracking, email sequences, AI-generated gap narratives.
+- **Now:** Assessment engine, scoring, gap report, purchase logging, rating, email/password auth, lead profiles, per-user RLS, and a role-gated operator dashboard.
+- **Later:** Affiliate tracking, email sequences, social login, AI-generated gap narratives.
 
 ## Key User Action Flow
-1. Visitor opens `/` → sees intro + Start Assessment CTA.
-2. Answers 15 questions across sales-system, language, conversion, follow-up, referral, objection categories.
+1. Visitor opens `/` → sees intro + Start Assessment CTA → creates an account or signs in.
+2. Authenticated visitor answers 15 questions across sales-system, language, conversion, follow-up, referral, objection categories.
 3. Scoring engine tallies answer weights → maps to gaps → assigns lead type.
 4. Gap report renders: type label, gap list, matched products with buy buttons.
 5. Visitor clicks Buy → records Purchase → confirmation.
 6. Exit screen: rate 1-5 + referral email prompt.
-7. Operator dashboard auto-refreshes counts.
+7. Authenticated operator dashboard auto-refreshes counts and captured lead identities.
 
 ## Responsive Nav
 Persistent left sidebar on desktop (Assessment, Reports, Products, Dashboard); collapses to hamburger on mobile.

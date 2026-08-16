@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createAssessmentResponse, getQuestions } from "@/lib/data";
+import { createClient } from "@/lib/supabase/client";
 import { scoreAssessment } from "@/lib/scoring";
 import type { Question, SelectedAnswer } from "@/lib/types";
 
@@ -16,6 +17,7 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>("intro");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
 
   async function loadQuestions() {
     setLoading(true);
@@ -33,7 +35,24 @@ export default function Home() {
     }
   }
 
-  useEffect(() => { void loadQuestions(); }, []);
+  useEffect(() => {
+    void loadQuestions();
+    const supabase = createClient();
+    const confirmationCode = new URLSearchParams(window.location.search).get("code");
+    if (confirmationCode) {
+      void supabase.auth.exchangeCodeForSession(confirmationCode).then(({ data, error: authError }) => {
+        if (authError) setError("Your email confirmation link could not be completed. Please sign in instead.");
+        else {
+          setSignedIn(Boolean(data.session?.user));
+          window.history.replaceState({}, "", "/");
+        }
+      });
+    } else {
+      void supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
+    }
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session?.user)));
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   const question = questions[current];
   const selected = question ? answers[question.id] : undefined;
@@ -52,6 +71,14 @@ export default function Home() {
         weight: option.weight,
       },
     }));
+  }
+
+  function startAssessment() {
+    if (!signedIn) {
+      router.push("/login?next=/");
+      return;
+    }
+    setScreen("assessment");
   }
 
   async function next() {
@@ -107,10 +134,10 @@ export default function Home() {
               See exactly where your sales process is leaking revenue—and get a focused plan to fix the gaps that matter most.
             </p>
             <div className="mt-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-              <button onClick={() => setScreen("assessment")} className="group rounded-full bg-[#174b36] px-7 py-4 text-base font-bold text-white shadow-[0_12px_30px_rgba(23,75,54,.22)] transition hover:-translate-y-0.5 hover:bg-[#0f3526]">
-                Start my assessment <span className="ml-3 inline-block transition group-hover:translate-x-1">→</span>
+              <button onClick={startAssessment} className="group rounded-full bg-[#174b36] px-7 py-4 text-base font-bold text-white shadow-[0_12px_30px_rgba(23,75,54,.22)] transition hover:-translate-y-0.5 hover:bg-[#0f3526]">
+                {signedIn ? "Start my assessment" : "Create account to start"} <span className="ml-3 inline-block transition group-hover:translate-x-1">→</span>
               </button>
-              <span className="text-sm text-[#66736d]">Free · No login · Instant report</span>
+              <span className="text-sm text-[#66736d]">Free · Secure account · Instant report</span>
             </div>
           </div>
           <div className="relative mx-auto w-full max-w-lg">

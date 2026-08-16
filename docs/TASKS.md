@@ -1,17 +1,17 @@
 # Tasks
 
 ## Sprint 1 — Core Data + Assessment Engine
-**Goal:** Assessment flow works end-to-end, scores, stores response — no login.
+**Goal:** Authenticated visitor completes the assessment, which scores and stores an owner-scoped response.
 - [ ] Create Supabase tables (migration SQL)
 - [ ] Seed 5 products, 15 questions, ~45 answer options with weights + gap flags
 - [ ] Build `lib/data/` for all table CRUD
 - [ ] Build assessment page: render questions, collect answers, submit
 - [ ] Build scoring engine (`lib/scoring/`): sum weights → lead type + gap flags
 - [ ] Persist assessment_response with answers, total_score, lead_type, gap_flags
-- **DoD:** Anonymous visitor completes assessment → response row exists with correct lead_type and gap_flags.
+- **DoD:** Visitor creates an account, completes assessment → response row exists with their user_id, correct lead_type, and gap_flags.
 
 ## Sprint 2 — Gap Report + Product Match + Purchase
-**Goal:** Report renders, products matched, purchase logs — no login.
+**Goal:** Owner-only report renders, products match, and purchase logs.
 - [ ] Build gap report page `/reports/[id]`: lead type label, gap list, matched products ranked
 - [ ] Build product matching logic from gap_flags → product slugs
 - [ ] Add buy buttons → insert purchase record → confirmation state
@@ -35,16 +35,16 @@
 - [ ] Test all flows manually
 - **DoD:** Every screen tested in all 5 states; no dead buttons; UI copy clear.
 
-## Sprint 5 — Lock It Down (Auth + RLS)
-- [ ] Add Supabase auth (signup/login)
-- [ ] Replace permissive RLS with owner-scoped: `auth.uid() = user_id` on responses, purchases, ratings
-- [ ] Keep products + questions public read
-- [ ] Gate operator dashboard behind auth + role
-- [ ] Add audit log table + populate on purchase/rating
-- **DoD:** Logged-out user sees products + can start assessment; logged-in user sees only their responses; operator sees dashboard.
+## Sprint 5 — Authenticated Lead Capture + RLS
+- [x] Add Supabase email/password signup/login and capture lead profile details
+- [x] Replace permissive RLS with owner-scoped access on responses, purchases, ratings
+- [x] Keep products + questions public read
+- [x] Gate operator dashboard and catalog management behind auth + role
+- [x] Add audit log table + populate on purchase/rating
+- **DoD:** Logged-out visitor sees the landing page but must log in to assess; a visitor sees only their records; an operator sees the lead dashboard.
 
 ## v1 Functional Milestone: End of Sprint 3
-Success scenario fully usable: land → assess → report → buy → rate → dashboard reflects it.
+Success scenario fully usable: land → signup/login → assess → report → buy → rate → operator dashboard reflects an identifiable lead.
 
 ## Gantt
 ```
