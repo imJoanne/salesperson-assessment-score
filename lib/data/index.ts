@@ -31,6 +31,7 @@ export async function createAssessmentResponse(input: { answers: SelectedAnswer[
 }
 
 export async function getAssessmentResponse(id: string): Promise<AssessmentResponse | null> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) return null;
   const { data, error } = await createClient().from("assessment_responses").select("id,answers,total_score,lead_type,gap_flags,created_at").eq("id", id).maybeSingle();
   if (error) fail("Could not load this report", error);
   return data ? ({ ...data, total_score: Number(data.total_score) } as AssessmentResponse) : null;
@@ -40,6 +41,39 @@ export async function getActiveProducts(): Promise<Product[]> {
   const { data, error } = await createClient().from("products").select("id,name,slug,description,price_cents,is_active,sort_order").eq("is_active", true).order("sort_order");
   if (error) fail("Could not load products", error);
   return (data ?? []) as Product[];
+}
+
+export async function getProducts(): Promise<Product[]> {
+  const { data, error } = await createClient().from("products").select("id,name,slug,description,price_cents,is_active,sort_order").order("sort_order");
+  if (error) fail("Could not load products", error);
+  return (data ?? []) as Product[];
+}
+
+export async function createProduct(input: { name: string; description: string; priceCents: number }): Promise<Product> {
+  const baseSlug = input.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "program";
+  const { data: lastProduct } = await createClient().from("products").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await createClient().from("products").insert({
+    name: input.name.trim(),
+    slug: `${baseSlug}-${Date.now().toString(36)}`,
+    description: input.description.trim(),
+    price_cents: input.priceCents,
+    is_active: true,
+    sort_order: (lastProduct?.sort_order ?? 0) + 1,
+  }).select("id,name,slug,description,price_cents,is_active,sort_order").single();
+  if (error || !data) fail("Could not create this program", error);
+  return data as Product;
+}
+
+export async function updateProduct(id: string, input: { name: string; description: string; priceCents: number }): Promise<Product> {
+  const { data, error } = await createClient().from("products").update({ name: input.name.trim(), description: input.description.trim(), price_cents: input.priceCents }).eq("id", id).select("id,name,slug,description,price_cents,is_active,sort_order").single();
+  if (error || !data) fail("Could not update this program", error);
+  return data as Product;
+}
+
+export async function setProductActive(id: string, isActive: boolean): Promise<Product> {
+  const { data, error } = await createClient().from("products").update({ is_active: isActive }).eq("id", id).select("id,name,slug,description,price_cents,is_active,sort_order").single();
+  if (error || !data) fail(isActive ? "Could not restore this program" : "Could not archive this program", error);
+  return data as Product;
 }
 
 export async function createPurchase(responseId: string, product: Product): Promise<Purchase> {
