@@ -1,12 +1,12 @@
 {
-  "name": "vibe-stack-supabase",
+  "name": "salesperson-assessment-score",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -27,5 +27,5 @@
     "tailwindcss": "^4.0.0",
     "typescript": "^5"
   },
-  "packageManager": "bun@1.1.30"
+  "packageManager": "pnpm@11.19.0"
 }
