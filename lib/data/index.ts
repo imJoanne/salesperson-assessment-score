@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { AssessmentResponse, Product, Purchase, Question, SelectedAnswer } from "@/lib/types";
+import type { AssessmentResponse, DashboardMetrics, LeadType, Product, Purchase, Question, SelectedAnswer } from "@/lib/types";
 
 function fail(message: string, error?: { message?: string } | null): never {
   throw new Error(error?.message ? `${message}: ${error.message}` : message);
@@ -52,4 +52,46 @@ export async function createRating(responseId: string, score: number, referralEm
   const { data, error } = await createClient().from("ratings").insert({ assessment_response_id: responseId, score, referral_email: referralEmail || null }).select("id").single();
   if (error || !data) fail("Could not save your feedback", error);
   return data;
+}
+
+export async function getDashboardMetrics(): Promise<DashboardMetrics> {
+  const supabase = createClient();
+  const [responsesResult, purchasesResult, productsResult, ratingsResult] = await Promise.all([
+    supabase.from("assessment_responses").select("id,lead_type,total_score,gap_flags,created_at").order("created_at", { ascending: false }),
+    supabase.from("purchases").select("id,product_id,amount_cents,created_at"),
+    supabase.from("products").select("id,name"),
+    supabase.from("ratings").select("score"),
+  ]);
+
+  const firstError = responsesResult.error ?? purchasesResult.error ?? productsResult.error ?? ratingsResult.error;
+  if (firstError) fail("Could not load dashboard metrics", firstError);
+
+  const responses = responsesResult.data ?? [];
+  const purchases = purchasesResult.data ?? [];
+  const products = productsResult.data ?? [];
+  const ratings = ratingsResult.data ?? [];
+  const leadDistribution: Record<LeadType, number> = { great: 0, good: 0, average: 0, struggling: 0 };
+  for (const response of responses) {
+    if (response.lead_type in leadDistribution) leadDistribution[response.lead_type as LeadType] += 1;
+  }
+
+  const purchasesByProduct = products.map((product) => {
+    const matching = purchases.filter((purchase) => purchase.product_id === product.id);
+    return {
+      name: product.name,
+      count: matching.length,
+      revenueCents: matching.reduce((sum, purchase) => sum + purchase.amount_cents, 0),
+    };
+  }).filter((product) => product.count > 0).sort((a, b) => b.count - a.count || b.revenueCents - a.revenueCents);
+
+  const ratingTotal = ratings.reduce((sum, rating) => sum + rating.score, 0);
+  return {
+    totalReports: responses.length,
+    totalPurchases: purchases.length,
+    totalRevenueCents: purchases.reduce((sum, purchase) => sum + purchase.amount_cents, 0),
+    averageRating: ratings.length ? ratingTotal / ratings.length : null,
+    leadDistribution,
+    purchasesByProduct,
+    recentReports: responses.slice(0, 5).map((response) => ({ ...response, total_score: Number(response.total_score) })) as DashboardMetrics["recentReports"],
+  };
 }

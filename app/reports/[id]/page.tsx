@@ -111,7 +111,7 @@ export default function ReportPage() {
       </section>
 
       {error && <div role="alert" className="mx-auto mb-8 max-w-6xl rounded-xl bg-[#fbe2db] p-4 text-sm font-medium text-[#8b3022]">{error} Please try again.</div>}
-      {purchased && <section id="next-step" className="mx-auto mb-16 max-w-6xl rounded-[2rem] bg-[#174b36] p-8 text-white sm:p-12"><p className="text-xs font-bold tracking-[.18em] text-[#b9d8c5]">PURCHASE RECORDED</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.04em]">Great choice—{purchased.name} is on your plan.</h2><p className="mt-3 max-w-2xl text-[#d8e7dd]">Your selection and exact purchase amount have been saved to this assessment.</p></section>}
+      {purchased && <section id="next-step" className="mx-auto mb-16 max-w-6xl rounded-[2rem] bg-[#174b36] p-8 text-white sm:p-12"><p className="text-xs font-bold tracking-[.18em] text-[#b9d8c5]">PURCHASE RECORDED</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.04em]">Great choice—{purchased.name} is on your plan.</h2><p className="mt-3 max-w-2xl text-[#d8e7dd]">Your selection and exact purchase amount have been saved. One last step: tell us whether this report helped.</p><Link href={`/reports/${response.id}/feedback`} className="mt-7 inline-block rounded-full bg-white px-6 py-3.5 font-bold text-[#174b36]">Rate this report →</Link></section>}
     </main>
   );
 }
